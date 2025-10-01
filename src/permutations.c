@@ -4,16 +4,6 @@
 #include <string.h>
 #include <assert.h>
 
-typedef struct Permutation {
-    unsigned *nums;
-    unsigned n;
-} permutation_t;
-
-typedef struct PermutationIterator {
-    permutation_t value;
-    int next_perm_exist;
-} iterator_t;
-
 // Обмен местами элементов
 static void swap(unsigned *a, unsigned *b) {
     unsigned temp = *a;
