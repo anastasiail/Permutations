@@ -3,10 +3,16 @@
 
 #include <stdlib.h>
 
-typedef struct Permutation permutation_t;
-typedef struct PermutationIterator iterator_t;
+typedef struct Permutation {
+    unsigned *nums;
+    unsigned n;
+} permutation_t;
 
-// Объявления функций
+typedef struct PermutationIterator {
+    permutation_t value;
+    int next_perm_exist;
+} iterator_t;
+
 void iterator_init(iterator_t *i, unsigned n);
 const permutation_t *iterator_value(const iterator_t *i);
 int iterator_has_next(const iterator_t *i);
