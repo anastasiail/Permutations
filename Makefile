@@ -1,54 +1,83 @@
 # Компилятор и флаги
 CC = gcc
-# Включаем отладочную информацию и информацию для покрытия кода
-CFLAGS = -std=c99 -Wall -Wextra -g --coverage
-# Линковщик и его флаги
-LDFLAGS = --coverage
+CFLAGS = -Wall -Wextra -std=c99 -pedantic -Iinclude
+DEBUG_CFLAGS = -g -O0
+RELEASE_CFLAGS = -O2
+
+# Директории
+SRC_DIR = src
+INCLUDE_DIR = include
+TEST_DIR = test
+LIB_DIR = lib
+OBJ_DIR = obj
+
+# Цели сборки
+TARGET = $(TEST_DIR)/run
+LIBRARY = $(LIB_DIR)/libpermutations.a
 
 # Исходные файлы
-SRCS = permutation.c main.c
-OBJS = $(SRCS:.c=.o)
+SRCS = $(wildcard $(SRC_DIR)/*.c)
+TEST_SRCS = $(wildcard $(TEST_DIR)/*.c)
 
-# Исходники тестов
-TEST_SRCS = permutation.c test.c
-TEST_OBJS = $(TEST_SRCS:.c=.o)
+# Объектные файлы
+OBJS = $(SRCS:$(SRC_DIR)/%.c=$(OBJ_DIR)/%.o)
+TEST_OBJS = $(filter-out $(OBJ_DIR)/main.o, $(OBJS)) \
+            $(TEST_SRCS:$(TEST_DIR)/%.c=$(OBJ_DIR)/%.o)
 
-# Имена исполняемых файлов
-TARGET = permutation_app
-TEST_TARGET = run_tests
+# Основная цель по умолчанию
+all: debug
 
-# Цель по умолчанию - собрать основную программу
-all: $(TARGET)
+# Отладочная сборка
+debug: CFLAGS += $(DEBUG_CFLAGS)
+debug: $(TARGET)
 
-$(TARGET): $(OBJS)
- $(CC) $(LDFLAGS) -o $@ $^
+# Релизная сборка
+release: CFLAGS += $(RELEASE_CFLAGS)
+release: $(TARGET)
 
-$(TEST_TARGET): $(TEST_OBJS)
- $(CC) $(LDFLAGS) -o $@ $^
+# Сборка библиотеки
+library: CFLAGS += $(RELEASE_CFLAGS)
+library: $(LIBRARY)
 
-# Правило для сборки .o файлов
-%.o: %.c permutation.h
- $(CC) $(CFLAGS) -c $< -o $@
+# Исполняемый файл тестов
+$(TARGET): $(TEST_OBJS) | $(LIB_DIR)
+	$(CC) $(CFLAGS) -o $@ $(TEST_OBJS)
 
-# Запустить тесты
-test: $(TEST_TARGET)
- ./$(TEST_TARGET)
+# Статическая библиотека
+$(LIBRARY): $(OBJS) | $(LIB_DIR)
+	ar rcs $@ $(OBJS)
 
-# Посчитать покрытие кода тестами
-coverage: test
- # Генерируем отчет по покрытию
- gcov -b -c $(TEST_SRCS)
- # Показываем удобный отчет в консоли (нужна утилита lcov)
- # Сначала генерируем .info файл
- lcov --capture --directory . --output-file coverage.info
- # Затем выводим отчет в консоль
- lcov --list coverage.info
- # Для генерации HTML отчета можно использовать:
- # genhtml coverage.info --output-directory coverage_report
+# Компиляция объектных файлов для исходного кода
+$(OBJ_DIR)/%.o: $(SRC_DIR)/%.c | $(OBJ_DIR)
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+# Компиляция объектных файлов для тестов
+$(OBJ_DIR)/%.o: $(TEST_DIR)/%.c | $(OBJ_DIR)
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+# Создание необходимых директорий
+$(OBJ_DIR):
+	mkdir -p $(OBJ_DIR)
+
+$(LIB_DIR):
+	mkdir -p $(LIB_DIR)
 
 # Очистка
 clean:
- rm -f $(TARGET) $(TEST_TARGET) *.o *.gcno *.gcda *.gcov *.info
- rm -rf coverage_report
+	rm -rf $(OBJ_DIR) $(LIB_DIR) $(TARGET)
 
-.PHONY: all test coverage clean
+# Пересборка
+rebuild: clean all
+
+# Запуск тестов
+test: debug
+	./$(TARGET)
+
+# Вспомогательные цели
+.PHONY: all debug release library clean rebuild test
+
+# Зависимости для main.o (если будет отдельный main)
+$(OBJ_DIR)/main.o: $(INCLUDE_DIR)/permutations.h
+
+# Зависимости для тестов
+$(OBJ_DIR)/test.o: $(INCLUDE_DIR)/permutations.h
